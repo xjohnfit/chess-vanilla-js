@@ -9,8 +9,9 @@ const bishop = '<div class="piece" id="bishop"><svg xmlns="http://www.w3.org/200
 const pawn = '<div class="piece" id="pawn"><svg xmlns="http://www.w3.org/2000/svg" height="1em" viewBox="0 0 320 512"><!--! Font Awesome Free 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2023 Fonticons, Inc. --><path d="M215.5 224c29.2-18.4 48.5-50.9 48.5-88c0-57.4-46.6-104-104-104S56 78.6 56 136c0 37.1 19.4 69.6 48.5 88H96c-17.7 0-32 14.3-32 32c0 16.5 12.5 30 28.5 31.8L80 400H240L227.5 287.8c16-1.8 28.5-15.3 28.5-31.8c0-17.7-14.3-32-32-32h-8.5zM22.6 473.4c-4.2 4.2-6.6 10-6.6 16C16 501.9 26.1 512 38.6 512H281.4c12.5 0 22.6-10.1 22.6-22.6c0-6-2.4-11.8-6.6-16L256 432H64L22.6 473.4z"/></svg></div>';
 const knight = '<div class="piece" id="knight"><svg xmlns="http://www.w3.org/2000/svg" height="1em" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2023 Fonticons, Inc. --><path d="M96 48L82.7 61.3C70.7 73.3 64 89.5 64 106.5V238.9c0 10.7 5.3 20.7 14.2 26.6l10.6 7c14.3 9.6 32.7 10.7 48.1 3l3.2-1.6c2.6-1.3 5-2.8 7.3-4.5l49.4-37c6.6-5 15.7-5 22.3 0c10.2 7.7 9.9 23.1-.7 30.3L90.4 350C73.9 361.3 64 380 64 400H384l28.9-159c2.1-11.3 3.1-22.8 3.1-34.3V192C416 86 330 0 224 0H83.8C72.9 0 64 8.9 64 19.8c0 7.5 4.2 14.3 10.9 17.7L96 48zm24 68a20 20 0 1 1 40 0 20 20 0 1 1 -40 0zM22.6 473.4c-4.2 4.2-6.6 10-6.6 16C16 501.9 26.1 512 38.6 512H409.4c12.5 0 22.6-10.1 22.6-22.6c0-6-2.4-11.8-6.6-16L384 432H64L22.6 473.4z"/></svg></div>';
 
-
 const width = 8;
+let playerTurn = 'black';
+playerDisplay.textContent = 'black';
 
 const startPieces = [
     rook, knight, bishop, queen, king, bishop, knight, rook,
@@ -32,8 +33,8 @@ function createBoard() {
         square.setAttribute('square-id', i)
         // square.classList.add('beige');
 
-        const row = Math.floor( (63 - i) / 8) +1;
-        if(row % 2 === 0) {
+        const row = Math.floor((63 - i) / 8) + 1;
+        if (row % 2 === 0) {
             square.classList.add(i % 2 === 0 ? "beige" : "brown")
         } else {
             square.classList.add(i % 2 === 0 ? "brown" : "beige")
@@ -53,7 +54,7 @@ function createBoard() {
 
 createBoard();
 
-const allSquares = document.querySelectorAll("#gameboard .square");
+const allSquares = document.querySelectorAll(".square");
 allSquares.forEach(square => {
     square.addEventListener('dragstart', dragStart);
     square.addEventListener('dragover', dragOver);
@@ -75,10 +76,104 @@ function dragOver(e) {
 
 function dragDrop(e) {
     e.stopPropagation();
-
+    const correctTurn = draggedElement.firstChild.classList.contains(playerTurn)
     const taken = e.target.classList.contains('piece');
-    console.log(e.target)
-    // e.target.parentNode.append(draggedElement);
-    // e.target.remove();   
-    // e.target.append(draggedElement)
+    const valid = checkIfValid(e.target);
+    const opponentTurn = playerTurn === 'white' ? 'black' : 'white;';
+    const takenByOpponent = e.target.firstChild?.classList.contains('opponentTurn')
+
+    if (correctTurn) {
+        //check this first
+        if (takenByOpponent && valid) {
+            e.target.parentNode.append(draggedElement);
+            e.target.remove();
+            changePlayer();
+            return;
+        }
+        //then check this
+        if(taken && !takenByOpponent){
+            infoDisplay.textContent = "You cant do this move";
+            setTimeout(() => infoDisplay.textContent = "", 5000)
+            return;
+        }
+
+        if(valid) {
+            e.target.append(draggedElement);
+            changePlayer();
+            return;
+        }
+    }
+}
+
+function changePlayer() {
+    if (playerTurn === 'black') {
+        reverseIds()
+        playerTurn = 'white';
+        playerDisplay.textContent = 'White';
+    } else {
+        revertIds()
+        playerTurn = 'black';
+        playerDisplay.textContent = 'Black';
+    }
+}
+
+function checkIfValid(target) {
+    
+    const targetId = Number(target.getAttribute('square-id')) || Number(target.parentNode.getAttribute('square-id'));
+    const startId = Number(startPositionId);
+    const piece = draggedElement.id;
+    console.log('targetId', targetId);
+    console.log('startId', startId);
+    console.log('piece', piece);
+
+    switch(piece){
+        case 'pawn':
+            const starterRow = [8,9,10,11,12,13,14,15];
+            if(starterRow.includes(startId) && startId + width * 2 === targetId ||
+            startId + width === targetId ||
+            startId + width -1 === targetId && document.querySelector(`[square-id="${startId + width -1}"]`).firstChild ||
+            startId + width +1 === targetId && document.querySelector(`[square-id="${startId + width +1}"]`).firstChild 
+            ) {
+                return true;
+            }
+            break;
+
+            case 'knight':
+                if(
+                    startId + width * 2 -1 === targetId ||
+                    startId + width * 2 +1 === targetId ||
+                    startId + width -2 === targetId ||
+                    startId + width +2 === targetId ||
+                    startId - width * 2 -1 === targetId ||
+                    startId - width * 2 +1 === targetId ||
+                    startId - width -2 === targetId ||
+                    startId - width +2 === targetId
+                ) {
+                    return true;
+                }
+                break;
+            case 'bishop':
+                if(
+                    startId + width + 1 === targetId ||
+                    startId + width * 2 + 2 && !document.querySelector(`[square-id="${startId + width + 1}"]`).firstChild ||
+                    startId + width * 3 + 3 && !document.querySelector(`[square-id="${startId + width + 1}"]`).firstChild && !document.querySelector(`[square-id="${startId + width * 2 + 2}"]`).firstChild||
+                    startId + width * 4 + 4 && !document.querySelector(`[square-id="${startId + width + 1}"]`).firstChild && !document.querySelector(`[square-id="${startId + width * 2 + 2}"]`).firstChild||
+                    startId + width * 5 + 5 && !document.querySelector(`[square-id="${startId + width + 1}"]`).firstChild && !document.querySelector(`[square-id="${startId + width * 2 + 2}"]`).firstChild||
+                    startId + width * 6 + 6 && !document.querySelector(`[square-id="${startId + width + 1}"]`).firstChild && !document.querySelector(`[square-id="${startId + width * 2 + 2}"]`).firstChild||
+                    startId + width * 7 + 7 && !document.querySelector(`[square-id="${startId + width + 1}"]`).firstChild && !document.querySelector(`[square-id="${startId + width * 2 + 2}"]`).firstChild||
+                ){
+                    return true;
+                }
+    }
+}
+
+function reverseIds() {
+    const allSquares = document.querySelectorAll(".square");
+    allSquares.forEach((square, i) =>
+        square.setAttribute('square-id', (width * width - 1) - i))
+}
+
+function revertIds() {
+    const allSquares = document.querySelectorAll(".square");
+    allSquares.forEach((square, i) => square.setAttribute('square-id', i))
 }
